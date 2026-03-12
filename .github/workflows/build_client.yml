@@ -1,0 +1,30 @@
+name: Build Client (Electron)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build-electron:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm ci
+      - name: Build and package Electron
+        working-directory: ./client
+        run: npm run dist
+      - name: Upload packaged build
+        uses: actions/upload-artifact@v4
+        with:
+          name: chatapp-electron-win
+          path: |
+            client/dist/win-unpacked/**
+            client/dist/*.exe
