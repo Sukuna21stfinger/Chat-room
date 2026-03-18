@@ -5,6 +5,7 @@
   "main": "public/electron.js",
   "homepage": "./",
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.13.6",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
