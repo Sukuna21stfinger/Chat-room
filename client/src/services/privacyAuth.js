@@ -52,7 +52,7 @@ class PrivacyAuth {
   }
 
   // Store session securely
-  storeSession(userData) {
+  storeSession(userData, token = null) {
     const sessionToken = this.generateSessionToken(userData);
     
     // Store in sessionStorage (cleared when browser closes)
@@ -64,6 +64,11 @@ class PrivacyAuth {
       username: userData.username,
       email: userData.email
     }));
+
+    // Also persist the JWT token for API authorization
+    if (token) {
+      localStorage.setItem('token', token);
+    }
     
     return sessionToken;
   }

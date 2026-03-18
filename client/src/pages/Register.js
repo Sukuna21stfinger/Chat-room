@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import privacyAuth from '../services/privacyAuth';
@@ -52,7 +52,7 @@ const Register = () => {
       const response = await authAPI.register(formData);
       
       // Store session securely
-      privacyAuth.storeSession(response.data.user);
+      privacyAuth.storeSession(response.data.user, response.data.token);
       
       // Setup auto-logout
       privacyAuth.setupAutoLogout();

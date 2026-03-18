@@ -29,8 +29,23 @@ router.post('/', async (req, res) => {
 // Delete room (and its messages)
 router.delete('/:roomId', async (req, res) => {
   try {
-    const room = await Room.findByIdAndDelete(req.params.roomId);
+    // Allow deleting by MongoDB _id or by room name (fallback)
+    let room = null;
+    // Try by ObjectId
+    try {
+      room = await Room.findByIdAndDelete(req.params.roomId);
+    } catch (err) {
+      room = null;
+    }
+
+    // If not found by id, try deleting by name
+    if (!room) {
+      room = await Room.findOneAndDelete({ name: req.params.roomId });
+    }
+
     if (!room) return res.status(404).json({ message: 'Room not found' });
+
+    // Remove messages that reference the room name
     await Message.deleteMany({ room: room.name });
     res.json({ message: 'Room deleted' });
   } catch (error) {

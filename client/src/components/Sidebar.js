@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { roomAPI } from '../services/api';
 import secureStorage from '../services/secureStorage';
 
@@ -188,7 +188,6 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
         {rooms.map(room => (
           <div
             key={room._id}
-            onClick={() => onRoomSelect(room.name)}
             className="modern-card"
             style={{
               padding: 'var(--spacing-3)',
@@ -203,24 +202,47 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
               alignItems: 'center'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flex: 1 }} onClick={() => onRoomSelect(room.name)}>
               <span style={{ fontSize: 'var(--font-size-base)' }}>💬</span>
               <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: '500' }}>{room.name}</span>
             </div>
-            {unreadCounts?.[room.name] > 0 && (
-              <span style={{
-                backgroundColor: currentRoom === room.name ? 'rgba(255,255,255,0.2)' : 'var(--color-error)',
-                color: 'white',
-                borderRadius: 'var(--radius-full)',
-                padding: 'var(--spacing-1) var(--spacing-2)',
-                fontSize: 'var(--font-size-xs)',
-                fontWeight: 'bold',
-                minWidth: '20px',
-                textAlign: 'center'
-              }}>
-                {unreadCounts[room.name]}
-              </span>
-            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {unreadCounts?.[room.name] > 0 && (
+                <span style={{
+                  backgroundColor: currentRoom === room.name ? 'rgba(255,255,255,0.2)' : 'var(--color-error)',
+                  color: 'white',
+                  borderRadius: 'var(--radius-full)',
+                  padding: 'var(--spacing-1) var(--spacing-2)',
+                  fontSize: 'var(--font-size-xs)',
+                  fontWeight: 'bold',
+                  minWidth: '20px',
+                  textAlign: 'center'
+                }}>
+                  {unreadCounts[room.name]}
+                </span>
+              )}
+
+              <button
+                title="Room options"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const ok = window.confirm(`Delete room '${room.name}'? This will remove all messages.`);
+                  if (!ok) return;
+                  try {
+                      await roomAPI.deleteRoom(room._id || room.name);
+                      window.location.reload();
+                    } catch (err) {
+                      console.error('Failed to delete room', err);
+                      const serverMessage = err?.response?.data?.message || err.message || 'Failed to delete room';
+                      alert(serverMessage);
+                    }
+                }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 6 }}
+              >
+                🗑️
+              </button>
+            </div>
           </div>
         ))}
       </div>

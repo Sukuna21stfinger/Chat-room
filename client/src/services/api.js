@@ -20,10 +20,14 @@ export const authAPI = {
   login: (userData) => api.post('/auth/login', userData)
 };
 
+// Guest auth
+authAPI.guest = () => api.post('/auth/guest');
+
 export const roomAPI = {
   getRooms: () => api.get('/rooms'),
   createRoom: (roomData) => api.post('/rooms', roomData),
-  getMessages: (roomId) => api.get(`/rooms/${roomId}/messages`)
+  getMessages: (roomId) => api.get(`/rooms/${roomId}/messages`),
+  deleteRoom: (roomId) => api.delete(`/rooms/${roomId}`)
 };
 
 export default api;

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
+// Avoid importing `electron-is-dev` (ESM-only in some installs) — use env/process heuristics
+const isDev = (process.env.ELECTRON_IS_DEV === 'true') || (process.env.NODE_ENV === 'development') || Boolean(process.defaultApp) || /[\\/]electron[\\/]/.test(process.execPath);
 const fs = require('fs-extra');
 
 function createWindow() {

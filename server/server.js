@@ -14,17 +14,28 @@ const clientOrigins = clientOriginEnv.split(',').map(s => s.trim());
 
 const io = socketIo(server, {
   cors: {
-    origin: clientOrigins,
+    // For local development/tests reflect the request origin so browsers receive CORS headers.
+    // In production, `clientOrigins` should be used to restrict origins explicitly.
+    origin: (origin, callback) => callback(null, true),
     methods: ["GET", "POST"]
   }
 });
 
 // Middleware
+// Use a permissive CORS during local development so the dev server and tests
+// can communicate. In production, set CLIENT_ORIGIN to a comma-separated list
+// of allowed origins and remove the permissive reflector.
 app.use(cors({
-  origin: clientOrigins,
+  origin: (origin, callback) => callback(null, true),
   credentials: true
 }));
 app.use(express.json());
+
+// Request logger for debugging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip}`);
+  next();
+});
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -44,16 +55,30 @@ const startServer = async () => {
       // Use MongoDB connection string from environment or fallback to local
       let mongoUri = process.env.MONGODB_URI;
       let memoryServer = null;
-      if (!mongoUri) {
-        // If no MONGODB_URI provided, start an in-memory MongoDB for demo/testing
-        console.warn('No MONGODB_URI provided — starting in-memory MongoDB for demo/testing.');
+
+      const startInMemory = async () => {
+        console.warn('Falling back to in-memory MongoDB for demo/testing.');
         const { MongoMemoryServer } = require('mongodb-memory-server');
         memoryServer = await MongoMemoryServer.create();
         mongoUri = memoryServer.getUri();
-      }
+        await mongoose.connect(mongoUri);
+        console.log('Connected to in-memory MongoDB');
+      };
 
-      await mongoose.connect(mongoUri);
-      console.log('Connected to MongoDB');
+      if (!mongoUri) {
+        // If no MONGODB_URI provided, start an in-memory MongoDB for demo/testing
+        console.warn('No MONGODB_URI provided — starting in-memory MongoDB for demo/testing.');
+        await startInMemory();
+      } else {
+        try {
+          await mongoose.connect(mongoUri);
+          console.log('Connected to MongoDB');
+        } catch (connectErr) {
+          console.error('Failed to connect to provided MONGODB_URI:', connectErr.message || connectErr);
+          // If connecting to the provided URI fails, try an in-memory DB as a fallback for local/demo runs
+          await startInMemory();
+        }
+      }
 
       // Routes that require DB
       app.use('/api/auth', require('./routes/auth'));

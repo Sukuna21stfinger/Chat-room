@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useSocket } from '../context/SocketContext';
-import { roomAPI } from '../services/api';
-import secureStorage from '../services/secureStorage';
-import privacyAuth from '../services/privacyAuth';
-import { applyTheme, getStoredTheme } from '../styles/theme';
-import Sidebar from '../components/Sidebar';
+import { useEffect, useState } from 'react';
 import ChatWindow from '../components/ChatWindow';
 import OnlineUsers from '../components/OnlineUsers';
+import Sidebar from '../components/Sidebar';
+import { useSocket } from '../context/SocketContext';
+import { roomAPI } from '../services/api';
+import privacyAuth from '../services/privacyAuth';
+import secureStorage from '../services/secureStorage';
+import { applyTheme, getStoredTheme } from '../styles/theme';
 
 const ChatPage = () => {
   const [rooms, setRooms] = useState([]);
@@ -19,20 +19,23 @@ const ChatPage = () => {
   const [currentTheme, setCurrentTheme] = useState(getStoredTheme());
   const socket = useSocket();
 
+  // Apply theme when `currentTheme` changes (separate effect)
   useEffect(() => {
-    // Apply theme
     applyTheme(currentTheme);
-    
-    // Get current user from secure session
+  }, [currentTheme]);
+
+  // Initialize user and rooms once on mount. Do not re-set user on theme changes
+  // to avoid triggering socket re-join events.
+  useEffect(() => {
     const user = privacyAuth.getCurrentUser();
     if (!user) {
       window.location.href = '/login';
       return;
     }
     setCurrentUser(user);
-    
     loadRooms();
-  }, [currentTheme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (socket && currentUser) {
@@ -84,6 +87,21 @@ const ChatPage = () => {
 
       socket.on('user_left', (message) => {
         console.log(message);
+      });
+
+      socket.on('message_deleted', (data) => {
+        const { messageId } = data;
+        setMessages(prev => prev.filter(m => (m.id || m._id || m.timestamp) !== messageId));
+      });
+
+      socket.on('message_reacted', (data) => {
+        const { messageId, reactions } = data;
+        setMessages(prev => prev.map(m => {
+          if ((m.id || m._id) === messageId) {
+            return { ...m, reactions };
+          }
+          return m;
+        }));
       });
 
       return () => {
@@ -142,18 +160,32 @@ const ChatPage = () => {
   };
 
   const sendMessage = (message) => {
-    if (socket && message.trim() && currentUser) {
+    if (!socket || !currentUser) return;
+
+    // support passing an object for attachments/gifs
+    if (typeof message === 'object') {
+      const { type = 'text', content, attachment } = message;
       const messageData = {
         user: currentUser.username,
-        message,
+        message: content || '',
+        room: currentRoom,
+        timestamp: new Date().toISOString(),
+        type,
+        attachment
+      };
+      secureStorage.saveSentMessage(messageData, currentRoom);
+      socket.emit('send_message', messageData);
+      return;
+    }
+
+    if (typeof message === 'string' && message.trim()) {
+      const messageData = {
+        user: currentUser.username,
+        message: message,
         room: currentRoom,
         timestamp: new Date().toISOString()
       };
-      
-      // Save locally first (encrypted)
       secureStorage.saveSentMessage(messageData, currentRoom);
-      
-      // Send to server
       socket.emit('send_message', messageData);
     }
   };

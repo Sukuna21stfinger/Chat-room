@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import privacyAuth from '../services/privacyAuth';
@@ -35,7 +35,8 @@ const Login = () => {
       const response = await authAPI.login(formData);
       
       // Store session securely
-      privacyAuth.storeSession(response.data.user);
+      // Save JWT token and user session
+      privacyAuth.storeSession(response.data.user, response.data.token);
       
       // Setup auto-logout
       privacyAuth.setupAutoLogout();
@@ -48,12 +49,20 @@ const Login = () => {
     }
   };
 
-  const generateGuestLogin = () => {
-    const guestUsername = privacyAuth.generateAnonymousUsername();
-    setFormData({
-      email: `${guestUsername.toLowerCase()}@guest.local`,
-      password: 'guest123'
-    });
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await authAPI.guest();
+      // store token and user
+      privacyAuth.storeSession(response.data.user, response.data.token);
+      privacyAuth.setupAutoLogout();
+      navigate('/chat');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Guest login failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -209,7 +218,7 @@ const Login = () => {
         }}>
           <button
             type="button"
-            onClick={generateGuestLogin}
+            onClick={handleGuestLogin}
             className="btn btn-secondary"
             style={{ flex: 1, fontSize: 'var(--font-size-sm)' }}
           >
