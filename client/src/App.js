@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import privacyAuth from './services/privacyAuth';
 import { applyTheme, getStoredTheme } from './styles/theme';
 import { useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 const PrivateRoute = ({ children }) => {
   const isAuthenticated = privacyAuth.isAuthenticated();
@@ -45,6 +46,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
+          <Analytics />
         </div>
       </SocketProvider>
     </Router>
