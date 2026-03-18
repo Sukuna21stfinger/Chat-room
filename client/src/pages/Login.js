@@ -72,67 +72,47 @@ const Login = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 'var(--spacing-5)'
+      padding: '20px'
     }}>
-      <div className="modern-card animate-fade-in" style={{ 
-        maxWidth: '420px', 
+      <div style={{ 
+        maxWidth: '400px', 
         width: '100%',
-        textAlign: 'center'
+        background: 'var(--color-surface)',
+        borderRadius: 20,
+        padding: '36px 32px',
+        boxShadow: '0 24px 48px rgba(0,0,0,0.18)',
+        border: '1px solid var(--color-border)'
       }}>
-        <div style={{ marginBottom: 'var(--spacing-8)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
-            width: '64px',
-            height: '64px',
+            width: 56, height: 56,
             background: 'var(--gradient-primary)',
-            borderRadius: 'var(--radius-2xl)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto var(--spacing-4)',
-            fontSize: 'var(--font-size-2xl)'
-          }}>
-            💬
-          </div>
-          <h1 className="gradient-text" style={{ 
-            fontSize: 'var(--font-size-3xl)',
-            fontWeight: '700',
-            marginBottom: 'var(--spacing-2)'
-          }}>
-            Welcome Back
-          </h1>
-          <p style={{ 
-            color: 'var(--color-textSecondary)',
-            fontSize: 'var(--font-size-base)'
-          }}>
-            Sign in to continue your secure conversations
-          </p>
+            borderRadius: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 14px',
+            fontSize: 26
+          }}>💬</div>
+          <h1 className="gradient-text" style={{ fontSize: 26, fontWeight: 700, marginBottom: 6 }}>Welcome Back</h1>
+          <p style={{ color: 'var(--color-textSecondary)', fontSize: 14 }}>Sign in to continue chatting</p>
         </div>
 
         {error && (
-          <div className="animate-slide-up" style={{ 
+          <div style={{ 
             color: 'var(--color-error)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            padding: 'var(--spacing-3) var(--spacing-4)',
-            borderRadius: 'var(--radius-lg)',
-            marginBottom: 'var(--spacing-5)',
-            fontSize: 'var(--font-size-sm)',
-            border: '1px solid rgba(239, 68, 68, 0.2)'
+            backgroundColor: 'rgba(239,68,68,0.08)',
+            padding: '10px 14px',
+            borderRadius: 10,
+            marginBottom: 18,
+            fontSize: 13,
+            border: '1px solid rgba(239,68,68,0.2)'
           }}>
-            🔒 {error}
+            {error}
           </div>
         )}
         
-        <form onSubmit={handleSubmit} style={{ marginBottom: 'var(--spacing-6)' }}>
-          <div style={{ marginBottom: 'var(--spacing-4)', textAlign: 'left' }}>
-            <label style={{ 
-              display: 'block',
-              marginBottom: 'var(--spacing-2)',
-              color: 'var(--color-text)',
-              fontSize: 'var(--font-size-sm)',
-              fontWeight: '500'
-            }}>
-              Email Address
-            </label>
+        <form onSubmit={handleSubmit} style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 14, textAlign: 'left' }}>
+            <label style={{ display: 'block', marginBottom: 6, color: 'var(--color-text)', fontSize: 13, fontWeight: 600 }}>Email</label>
             <input
               type="email"
               name="email"
@@ -145,16 +125,8 @@ const Login = () => {
             />
           </div>
           
-          <div style={{ marginBottom: 'var(--spacing-6)', textAlign: 'left' }}>
-            <label style={{ 
-              display: 'block',
-              marginBottom: 'var(--spacing-2)',
-              color: 'var(--color-text)',
-              fontSize: 'var(--font-size-sm)',
-              fontWeight: '500'
-            }}>
-              Password
-            </label>
+          <div style={{ marginBottom: 20, textAlign: 'left' }}>
+            <label style={{ display: 'block', marginBottom: 6, color: 'var(--color-text)', fontSize: 13, fontWeight: 600 }}>Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -191,12 +163,7 @@ const Login = () => {
             type="submit" 
             disabled={loading}
             className="btn btn-primary"
-            style={{
-              width: '100%',
-              padding: 'var(--spacing-4) var(--spacing-6)',
-              fontSize: 'var(--font-size-base)',
-              marginBottom: 'var(--spacing-4)'
-            }}
+            style={{ width: '100%', padding: '12px', fontSize: 15, marginBottom: 10 }}
           >
             {loading ? (
               <>
@@ -211,40 +178,18 @@ const Login = () => {
           </button>
         </form>
         
-        <div style={{ 
-          display: 'flex', 
-          gap: 'var(--spacing-3)',
-          marginBottom: 'var(--spacing-5)'
-        }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
           <button
             type="button"
             onClick={handleGuestLogin}
             className="btn btn-secondary"
-            style={{ flex: 1, fontSize: 'var(--font-size-sm)' }}
+            style={{ flex: 1, fontSize: 13 }}
           >
-            🎭 Quick Guest
+            🎭 Continue as Guest
           </button>
         </div>
         
-        <div style={{
-          padding: 'var(--spacing-4)',
-          backgroundColor: 'var(--color-surfaceHover)',
-          borderRadius: 'var(--radius-lg)',
-          marginBottom: 'var(--spacing-5)'
-        }}>
-          <p style={{ 
-            color: 'var(--color-textSecondary)',
-            fontSize: 'var(--font-size-xs)',
-            lineHeight: '1.4'
-          }}>
-            🔒 Your messages are encrypted locally. We prioritize your privacy and security.
-          </p>
-        </div>
-        
-        <p style={{ 
-          color: 'var(--color-textSecondary)',
-          fontSize: 'var(--font-size-sm)'
-        }}>
+        <p style={{ color: 'var(--color-textSecondary)', fontSize: 13, textAlign: 'center' }}>
           Don't have an account?{' '}
           <Link 
             to="/register"

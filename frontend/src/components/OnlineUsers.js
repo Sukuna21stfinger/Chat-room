@@ -1,32 +1,16 @@
 const OnlineUsers = ({ users = [] }) => {
-  const getAvatarUrl = (username) =>
-    `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(username)}&backgroundColor=667eea,764ba2,06b6d4,10b981`;
+  const avatar = (u) => `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u)}&backgroundColor=667eea,764ba2,06b6d4,10b981`;
 
   return (
-    <aside style={{
-      width: 220,
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      backgroundColor: 'var(--color-surface)',
-      borderLeft: '1px solid var(--color-border)',
-      flexShrink: 0
-    }}>
-      <header style={{
-        padding: '16px 14px 12px',
-        borderBottom: '1px solid var(--color-border)'
-      }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-          Online · {users.length}
-        </div>
+    <aside style={{ width: 220, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--color-surface)', borderLeft: '1px solid var(--color-border)', flexShrink: 0 }}>
+      <header style={{ padding: '16px 14px 12px', borderBottom: '1px solid var(--color-border)' }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Online · {users.length}</div>
         <div style={{ fontSize: 11, color: 'var(--color-textMuted)', marginTop: 2 }}>Active in this room</div>
       </header>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '10px 10px' }}>
+      <main style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
         {users.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--color-textMuted)', padding: '24px 8px', fontSize: 13 }}>
-            No other users online
-          </div>
+          <div style={{ textAlign: 'center', color: 'var(--color-textMuted)', padding: '24px 8px', fontSize: 13 }}>No other users online</div>
         ) : (
           users.map((u) => {
             const username = typeof u === 'string' ? u : u.username || u.name || 'Unknown';
@@ -37,14 +21,8 @@ const OnlineUsers = ({ users = [] }) => {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <img src={getAvatarUrl(username)} alt="avatar" style={{ width: 34, height: 34, borderRadius: '50%', border: '2px solid var(--color-border)' }} />
-                  <span style={{
-                    position: 'absolute', bottom: 0, right: 0,
-                    width: 9, height: 9,
-                    backgroundColor: 'var(--color-online)',
-                    borderRadius: '50%',
-                    border: '2px solid var(--color-surface)'
-                  }} />
+                  <img src={avatar(username)} alt="avatar" style={{ width: 34, height: 34, borderRadius: '50%', border: '2px solid var(--color-border)' }} />
+                  <span style={{ position: 'absolute', bottom: 0, right: 0, width: 9, height: 9, backgroundColor: 'var(--color-online)', borderRadius: '50%', border: '2px solid var(--color-surface)' }} />
                 </div>
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontWeight: 500, fontSize: 13, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{username}</div>

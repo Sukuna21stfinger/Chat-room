@@ -1,1 +1,71 @@
-# ChatApp - Real-time Messaging Platform\n\nA modern, production-ready chat application with real-time messaging, user authentication, and desktop distribution.\n\n## 🚀 Features\n\n- **Real-time messaging** with Socket.io\n- **User authentication** (register/login)\n- **Multiple chat rooms**\n- **Online user tracking**\n- **Message history** (MongoDB)\n- **Professional UI** with chat bubbles\n- **Desktop application** (Electron)\n- **Typing indicators**\n- **Auto-generated avatars**\n- **Dark mode toggle**\n\n## 📁 Project Structure\n\n```\nchat-app/\n├── server/          # Node.js backend (deploy to Vercel)\n├── client/          # React frontend (desktop app)\n└── DEPLOYMENT-GUIDE.md\n```\n\n## 🖥️ Desktop App\n\n**For end users:**\n1. Get the `client` folder\n2. Double-click `ChatApp-Desktop.bat`\n3. App installs dependencies and launches automatically\n\n## 🌐 Server Deployment\n\n1. Deploy `server` folder to Vercel\n2. Setup MongoDB Atlas\n3. Add environment variables\n4. Update client URLs\n\nSee `DEPLOYMENT-GUIDE.md` for detailed instructions.\n\n## 🛠️ Tech Stack\n\n**Frontend:**\n- React\n- Socket.io-client\n- Electron\n- Axios\n\n**Backend:**\n- Node.js\n- Express\n- Socket.io\n- MongoDB\n- JWT Authentication\n\n## 📋 Quick Start\n\n### Development\n```bash\n# Server\ncd server\nnpm install\nnpm start\n\n# Client\ncd client\nnpm install\nnpm start\n```\n\n### Production\n1. Follow deployment guide\n2. Share client folder with users\n3. Users run `ChatApp-Desktop.bat`\n\n## 🎯 Ready for Production\n\n- ✅ Vercel deployment ready\n- ✅ MongoDB Atlas integration\n- ✅ Desktop executable\n- ✅ Professional UI\n- ✅ Real-time communication\n- ✅ User authentication\n- ✅ Message persistence\n\n---\n\n**Built with modern web technologies for a professional chat experience.**
+# ChatApp — 3-Part Architecture
+
+```
+chat-app/
+├── frontend/    → Deploy to Vercel
+├── backend/     → Deploy to Render
+└── database/    → MongoDB Atlas (models + seed)
+```
+
+---
+
+## 1. Database (MongoDB Atlas)
+- Already configured. Connection string lives in `backend/.env`
+- To seed the default "general" room:
+  ```bash
+  cd database
+  npm install
+  npm run seed
+  ```
+
+---
+
+## 2. Backend (Render)
+1. Push the `backend/` folder to its own GitHub repo
+2. Create a new **Web Service** on [render.com](https://render.com)
+3. Set these environment variables in the Render dashboard:
+   | Key | Value |
+   |-----|-------|
+   | `MONGODB_URI` | your Atlas connection string |
+   | `JWT_SECRET` | a long random secret |
+   | `CLIENT_ORIGIN` | your Vercel frontend URL |
+4. Build command: `npm install` · Start command: `npm start`
+5. Note your Render URL: `https://chatapp-backend.onrender.com`
+
+### Local dev
+```bash
+cd backend
+cp .env.example .env   # fill in values
+npm install
+npm run dev
+```
+
+---
+
+## 3. Frontend (Vercel)
+1. Update `frontend/.env.production` with your Render backend URL
+2. Push the `frontend/` folder to its own GitHub repo
+3. Import into [vercel.com](https://vercel.com) — it auto-detects React
+4. Add environment variables in Vercel dashboard:
+   | Key | Value |
+   |-----|-------|
+   | `REACT_APP_API_URL` | `https://your-backend.onrender.com/api` |
+   | `REACT_APP_SERVER_URL` | `https://your-backend.onrender.com` |
+
+### Local dev
+```bash
+cd frontend
+npm install
+npm start        # connects to localhost:5000 via .env.development
+```
+
+---
+
+## Quick local dev (both together)
+```bash
+# Terminal 1
+cd backend && npm run dev
+
+# Terminal 2
+cd frontend && npm start
+```

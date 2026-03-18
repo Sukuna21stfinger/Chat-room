@@ -154,14 +154,23 @@ const GifPicker = ({ onSelect }) => {
   }, [debouncedQ]);
 
   return (
-    <div style={{ width: 560, padding: 8, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8 }}>
-      <input placeholder="Search GIFs (live search)" value={query} onChange={e => setQuery(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 6, borderRadius: 6 }} />
-      {loading && <div style={{ color: 'var(--color-textMuted)', marginBottom: 8 }}>Searching GIFs…</div>}
-      {error && <div style={{ color: 'var(--color-error)', marginBottom: 8 }}>GIF search error: {error}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-        {(!results || results.length === 0) && <div style={{ gridColumn: '1/-1', color: 'var(--color-textMuted)' }}>No GIFs found for "{query}"</div>}
+    <div style={{ width: 'min(340px, 90vw)', padding: 10, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: 'var(--shadow-lg)' }}>
+      <input
+        placeholder="Search GIFs…"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        style={{ width: '100%', marginBottom: 8, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surfaceHover)', color: 'var(--color-text)', fontSize: 13 }}
+      />
+      {loading && <div style={{ color: 'var(--color-textMuted)', fontSize: 12, marginBottom: 6 }}>Searching…</div>}
+      {error && <div style={{ color: 'var(--color-error)', fontSize: 12, marginBottom: 6 }}>{error}</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, maxHeight: 260, overflowY: 'auto' }}>
+        {(!results || results.length === 0) && <div style={{ gridColumn: '1/-1', color: 'var(--color-textMuted)', fontSize: 12, padding: 8 }}>No GIFs found</div>}
         {results.map((g, idx) => (
-          <img key={g.url + idx} src={g.url} alt="gif" onClick={() => onSelect(g.url)} style={{ width: '100%', cursor: 'pointer', borderRadius: 6 }} />
+          <img key={g.url + idx} src={g.url} alt="gif" onClick={() => onSelect(g.url)}
+            style={{ width: '100%', height: 80, objectFit: 'cover', cursor: 'pointer', borderRadius: 6, transition: 'opacity 0.15s' }}
+            onMouseEnter={e => e.target.style.opacity = 0.8}
+            onMouseLeave={e => e.target.style.opacity = 1}
+          />
         ))}
       </div>
     </div>
@@ -319,31 +328,94 @@ const MessageInput = ({ onSendMessage, currentRoom }) => {
   };
 
   return (
-    <div style={{ padding: 12, background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-          <button type="button" onClick={() => { setShowEmoji(v => !v); setShowGifs(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18 }} title="Emoji">😊</button>
-          <button type="button" onClick={() => { setShowGifs(v => !v); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 14 }} title="GIF">GIF</button>
+    <div style={{ padding: '10px 14px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        {/* Emoji + GIF buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 4 }}>
+          <button
+            type="button"
+            onClick={() => { setShowEmoji(v => !v); setShowGifs(false); }}
+            title="Emoji"
+            style={{
+              background: showEmoji ? 'var(--color-surfaceHover)' : 'transparent',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 18,
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.15s'
+            }}
+          >😊</button>
+          <button
+            type="button"
+            onClick={() => { setShowGifs(v => !v); setShowEmoji(false); }}
+            title="GIF"
+            style={{
+              background: showGifs ? 'var(--color-surfaceHover)' : 'transparent',
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'var(--color-primary)',
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.15s'
+            }}
+          >GIF</button>
         </div>
 
+        {/* Input area */}
         <div style={{ position: 'relative', flex: 1 }}>
           <textarea
             ref={inputRef}
             value={message}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Type your secure message..."
+            placeholder="Type a message…"
             rows={1}
-            style={{ resize: 'none', minHeight: 44, maxHeight: 120, width: '100%', padding: 10, borderRadius: 8 }}
+            style={{
+              resize: 'none',
+              minHeight: 44,
+              maxHeight: 120,
+              width: '100%',
+              padding: '10px 70px 10px 14px',
+              borderRadius: 12,
+              border: '1.5px solid var(--color-border)',
+              background: 'var(--color-surfaceHover)',
+              color: 'var(--color-text)',
+              fontSize: 14,
+              lineHeight: 1.5,
+              outline: 'none',
+              transition: 'border-color 0.15s'
+            }}
+            onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
+            onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
           />
 
           {/* Emoji picker */}
           {showEmoji && (
-            <div style={{ position: 'absolute', left: 0, bottom: 56, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 8, zIndex: 60, maxWidth: 640, maxHeight: 320, overflowY: 'auto' }}>
-              <input placeholder="Search emoji (try 'smile' or 'food')" value={emojiQuery} onChange={e => setEmojiQuery(e.target.value)} style={{ width: '100%', marginBottom: 8, padding: 6, borderRadius: 6 }} />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 6 }}>
+            <div style={{ position: 'absolute', left: 0, bottom: 52, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: 10, zIndex: 60, width: 'min(340px, 90vw)', maxHeight: 320, overflowY: 'auto', boxShadow: 'var(--shadow-lg)' }}>
+              <input
+                placeholder="Search emoji…"
+                value={emojiQuery}
+                onChange={e => setEmojiQuery(e.target.value)}
+                style={{ width: '100%', marginBottom: 8, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-surfaceHover)', color: 'var(--color-text)', fontSize: 13 }}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 4 }}>
                 {emojiResults.slice(0, 320).map((it, idx) => (
-                  <button key={it.ch + idx} onClick={() => handleEmojiClick(it.ch)} style={{ fontSize: 20, padding: 6, background: 'transparent', border: 0, cursor: 'pointer' }} aria-label={it.tags.join(',')}>{it.ch}</button>
+                  <button key={it.ch + idx} onClick={() => handleEmojiClick(it.ch)}
+                    style={{ fontSize: 20, padding: 5, background: 'transparent', border: 0, cursor: 'pointer', borderRadius: 6, transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.target.style.background = 'var(--color-surfaceHover)'}
+                    onMouseLeave={e => e.target.style.background = 'transparent'}
+                    aria-label={it.tags.join(',')}>{it.ch}</button>
                 ))}
               </div>
             </div>
@@ -351,23 +423,39 @@ const MessageInput = ({ onSendMessage, currentRoom }) => {
 
           {/* GIF picker */}
           {showGifs && (
-            <div style={{ position: 'absolute', left: 0, bottom: 56, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, padding: 8, zIndex: 60 }}>
+            <div style={{ position: 'absolute', left: 0, bottom: 52, zIndex: 60 }}>
               <GifPicker onSelect={handleGifSelect} />
             </div>
           )}
 
-          <div style={{ position: 'absolute', bottom: 8, right: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--color-textMuted)' }}>
-            <span>🔒</span>
-            <span>{message.length}/1000</span>
+          {/* char count */}
+          <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 11, color: 'var(--color-textMuted)', pointerEvents: 'none' }}>
+            {message.length}/1000
           </div>
         </div>
 
-        <button type="submit" disabled={!message.trim()} style={{ padding: '8px 12px', borderRadius: 8 }}>{'📤 Send'}</button>
+        {/* Send button */}
+        <button
+          type="submit"
+          disabled={!message.trim()}
+          style={{
+            padding: '0 16px',
+            height: 44,
+            borderRadius: 12,
+            background: message.trim() ? 'var(--gradient-primary)' : 'var(--color-surfaceHover)',
+            color: message.trim() ? 'white' : 'var(--color-textMuted)',
+            border: 'none',
+            cursor: message.trim() ? 'pointer' : 'not-allowed',
+            fontWeight: 600,
+            fontSize: 14,
+            transition: 'all 0.15s',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
+        >
+          Send ➤
+        </button>
       </form>
-
-      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-textMuted)', textAlign: 'center' }}>
-        🛡️ Your messages are encrypted
-      </div>
     </div>
   );
 };

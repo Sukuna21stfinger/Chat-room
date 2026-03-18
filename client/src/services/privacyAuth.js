@@ -145,4 +145,5 @@ class PrivacyAuth {
   }
 }
 
-export default new PrivacyAuth();
+const privacyAuthInstance = new PrivacyAuth();
+export default privacyAuthInstance;

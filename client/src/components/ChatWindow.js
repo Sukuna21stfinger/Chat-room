@@ -23,42 +23,35 @@ const ChatWindow = ({ messages, currentRoom, onSendMessage, currentUser, typingU
     }}>
       {/* Header */}
       <div style={{ 
-        padding: 'var(--spacing-5)',
+        padding: '14px 20px',
         borderBottom: '1px solid var(--color-border)',
         backgroundColor: 'var(--color-surface)',
         boxShadow: 'var(--shadow-sm)',
-        zIndex: 10
+        zIndex: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-3)' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            background: 'var(--gradient-primary)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 'var(--font-size-lg)'
-          }}>
-            {currentRoom === 'general' ? '🏠' : '💬'}
-          </div>
-          <div>
-            <h2 style={{ 
-              margin: 0, 
-              color: 'var(--color-text)',
-              fontSize: 'var(--font-size-xl)',
-              fontWeight: '600'
-            }}>
-              #{currentRoom}
-            </h2>
-            <p style={{
-              margin: 0,
-              color: 'var(--color-textSecondary)',
-              fontSize: 'var(--font-size-sm)'
-            }}>
-              🔒 End-to-end encrypted • {messages.length} messages
-            </p>
-          </div>
+        <div style={{
+          width: 38,
+          height: 38,
+          background: 'var(--gradient-primary)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 18,
+          flexShrink: 0
+        }}>
+          {currentRoom === 'general' ? '🏠' : '💬'}
+        </div>
+        <div>
+          <h2 style={{ margin: 0, color: 'var(--color-text)', fontSize: 16, fontWeight: 700 }}>
+            #{currentRoom}
+          </h2>
+          <p style={{ margin: 0, color: 'var(--color-textMuted)', fontSize: 12 }}>
+            🔒 Encrypted · {messages.length} messages
+          </p>
         </div>
       </div>
       

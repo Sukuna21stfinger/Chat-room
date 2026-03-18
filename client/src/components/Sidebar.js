@@ -39,7 +39,7 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
 
   return (
     <div style={{ 
-      width: '300px', 
+      width: '260px', 
       backgroundColor: 'var(--color-surface)', 
       borderRight: '1px solid var(--color-border)',
       display: 'flex',
@@ -150,19 +150,20 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
         {/* General Room */}
         <div
           onClick={() => onRoomSelect('general')}
-          className="modern-card"
           style={{
-            padding: 'var(--spacing-3)',
-            marginBottom: 'var(--spacing-2)',
+            padding: '10px 12px',
+            marginBottom: 4,
             cursor: 'pointer',
-            backgroundColor: currentRoom === 'general' ? 'var(--color-primary)' : 'var(--color-surface)',
+            backgroundColor: currentRoom === 'general' ? 'var(--color-primary)' : 'transparent',
             color: currentRoom === 'general' ? 'white' : 'var(--color-text)',
-            border: currentRoom === 'general' ? 'none' : '1px solid var(--color-border)',
-            transition: 'all var(--transition-normal)',
+            borderRadius: 10,
+            transition: 'all 0.15s',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
           }}
+          onMouseEnter={e => { if (currentRoom !== 'general') e.currentTarget.style.background = 'var(--color-surfaceHover)'; }}
+          onMouseLeave={e => { if (currentRoom !== 'general') e.currentTarget.style.background = 'transparent'; }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)' }}>
             <span style={{ fontSize: 'var(--font-size-base)' }}>🏠</span>
@@ -188,19 +189,20 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
         {rooms.map(room => (
           <div
             key={room._id}
-            className="modern-card"
             style={{
-              padding: 'var(--spacing-3)',
-              marginBottom: 'var(--spacing-2)',
+              padding: '10px 12px',
+              marginBottom: 4,
               cursor: 'pointer',
-              backgroundColor: currentRoom === room.name ? 'var(--color-primary)' : 'var(--color-surface)',
+              backgroundColor: currentRoom === room.name ? 'var(--color-primary)' : 'transparent',
               color: currentRoom === room.name ? 'white' : 'var(--color-text)',
-              border: currentRoom === room.name ? 'none' : '1px solid var(--color-border)',
-              transition: 'all var(--transition-normal)',
+              borderRadius: 10,
+              transition: 'all 0.15s',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
             }}
+            onMouseEnter={e => { if (currentRoom !== room.name) e.currentTarget.style.background = 'var(--color-surfaceHover)'; }}
+            onMouseLeave={e => { if (currentRoom !== room.name) e.currentTarget.style.background = 'transparent'; }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-2)', flex: 1 }} onClick={() => onRoomSelect(room.name)}>
               <span style={{ fontSize: 'var(--font-size-base)' }}>💬</span>

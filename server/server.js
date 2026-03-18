@@ -8,102 +8,61 @@ const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
-// Allow configuring client origin(s) via environment variable (comma-separated)
-const clientOriginEnv = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
-const clientOrigins = clientOriginEnv.split(',').map(s => s.trim());
 
 const io = socketIo(server, {
-  cors: {
-    // For local development/tests reflect the request origin so browsers receive CORS headers.
-    // In production, `clientOrigins` should be used to restrict origins explicitly.
-    origin: (origin, callback) => callback(null, true),
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: (origin, callback) => callback(null, true), methods: ['GET', 'POST'] }
 });
 
-// Middleware
-// Use a permissive CORS during local development so the dev server and tests
-// can communicate. In production, set CLIENT_ORIGIN to a comma-separated list
-// of allowed origins and remove the permissive reflector.
-app.use(cors({
-  origin: (origin, callback) => callback(null, true),
-  credentials: true
-}));
+app.use(cors({ origin: (origin, callback) => callback(null, true), credentials: true }));
 app.use(express.json());
 
-// Request logger for debugging
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} from ${req.ip}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({ message: 'Chat App Server is running!', status: 'OK' });
+app.get('/', (req, res) => res.json({ message: 'Chat App Server is running!', status: 'OK' }));
+
+// Mount routes unconditionally — DB connection is handled lazily below
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/rooms', require('./routes/rooms'));
+require('./socket/socketHandler')(io);
+
+// Lazy MongoDB connection — reuses existing connection on Vercel serverless
+let dbConnected = false;
+const connectDB = async () => {
+  if (dbConnected || mongoose.connection.readyState === 1) return;
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri) throw new Error('MONGODB_URI is not set');
+  await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 10000 });
+  dbConnected = true;
+  console.log('Connected to MongoDB');
+};
+
+// Middleware to ensure DB is connected before any /api route
+app.use('/api', async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB connection error:', err.message);
+    res.status(503).json({ message: 'Database unavailable. Please try again.' });
+  }
 });
 
-// MongoDB connection (optionally skip DB for local quick testing with SKIP_DB=true)
 const startServer = async () => {
   try {
-    const skipDb = process.env.SKIP_DB === 'true';
-    // In production, do not allow in-memory DB or skipping DB — require MONGODB_URI
-    if (process.env.NODE_ENV === 'production' && !process.env.MONGODB_URI) {
-      console.error('FATAL: NODE_ENV=production requires a valid MONGODB_URI.');
-      process.exit(1);
-    }
-    if (!skipDb) {
-      // Use MongoDB connection string from environment or fallback to local
-      let mongoUri = process.env.MONGODB_URI;
-      let memoryServer = null;
-
-      const startInMemory = async () => {
-        console.warn('Falling back to in-memory MongoDB for demo/testing.');
-        const { MongoMemoryServer } = require('mongodb-memory-server');
-        memoryServer = await MongoMemoryServer.create();
-        mongoUri = memoryServer.getUri();
-        await mongoose.connect(mongoUri);
-        console.log('Connected to in-memory MongoDB');
-      };
-
-      if (!mongoUri) {
-        // If no MONGODB_URI provided, start an in-memory MongoDB for demo/testing
-        console.warn('No MONGODB_URI provided — starting in-memory MongoDB for demo/testing.');
-        await startInMemory();
-      } else {
-        try {
-          await mongoose.connect(mongoUri);
-          console.log('Connected to MongoDB');
-        } catch (connectErr) {
-          console.error('Failed to connect to provided MONGODB_URI:', connectErr.message || connectErr);
-          // If connecting to the provided URI fails, try an in-memory DB as a fallback for local/demo runs
-          await startInMemory();
-        }
-      }
-
-      // Routes that require DB
-      app.use('/api/auth', require('./routes/auth'));
-      app.use('/api/rooms', require('./routes/rooms'));
-
-      // Socket handling
-      require('./socket/socketHandler')(io);
-    } else {
-      console.warn('SKIP_DB is set. Starting server without connecting to MongoDB. Some routes will be unavailable.');
-      // still mount a minimal auth router that will return 503 for DB ops
-      app.use('/api/auth', (req, res) => res.status(503).json({ message: 'DB disabled (SKIP_DB=true)' }));
-    }
-
+    await connectDB();
     const PORT = process.env.PORT || 5000;
-    console.log('about to call server.listen on port', PORT);
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   } catch (error) {
     console.error('Server startup error:', error);
     process.exit(1);
   }
 };
 
-startServer();
+if (process.env.NODE_ENV !== 'production') {
+  startServer();
+}
 
-// Export for Vercel
 module.exports = app;

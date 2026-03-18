@@ -111,6 +111,8 @@ const ChatPage = () => {
         socket.off('user_stop_typing');
         socket.off('user_joined');
         socket.off('user_left');
+        socket.off('message_deleted');
+        socket.off('message_reacted');
       };
     }
   }, [socket, currentRoom, currentUser]);
@@ -159,15 +161,14 @@ const ChatPage = () => {
     }
   };
 
-  const sendMessage = (message) => {
+  const sendMessage = (payload) => {
     if (!socket || !currentUser) return;
 
-    // support passing an object for attachments/gifs
-    if (typeof message === 'object') {
-      const { type = 'text', content, attachment } = message;
+    if (typeof payload === 'object') {
+      const { type = 'text', message: text = '', attachment } = payload;
       const messageData = {
         user: currentUser.username,
-        message: content || '',
+        message: text,
         room: currentRoom,
         timestamp: new Date().toISOString(),
         type,
@@ -178,12 +179,13 @@ const ChatPage = () => {
       return;
     }
 
-    if (typeof message === 'string' && message.trim()) {
+    if (typeof payload === 'string' && payload.trim()) {
       const messageData = {
         user: currentUser.username,
-        message: message,
+        message: payload,
         room: currentRoom,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        type: 'text'
       };
       secureStorage.saveSentMessage(messageData, currentRoom);
       socket.emit('send_message', messageData);

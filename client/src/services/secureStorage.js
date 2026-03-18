@@ -327,4 +327,5 @@ class SecureChatStorage {
   }
 }
 
-export default new SecureChatStorage();
+const secureChatStorage = new SecureChatStorage();
+export default secureChatStorage;
