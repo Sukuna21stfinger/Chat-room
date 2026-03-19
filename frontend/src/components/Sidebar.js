@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { roomAPI } from '../services/api';
 
-const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, onThemeToggle, currentTheme, onLogout }) => {
+const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, onThemeToggle, currentTheme, onLogout, isMobile }) => {
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
 
@@ -19,7 +19,12 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
 
   const roomItem = (name, icon, isActive, onClick, onDelete) => (
     <div onClick={onClick}
-      style={{ padding: '10px 12px', marginBottom: 4, cursor: 'pointer', backgroundColor: isActive ? 'var(--color-primary)' : 'transparent', color: isActive ? 'white' : 'var(--color-text)', borderRadius: 10, transition: 'all 0.15s', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+      style={{ padding: '11px 12px', marginBottom: 4, cursor: 'pointer',
+        backgroundColor: isActive ? 'var(--color-primary)' : 'transparent',
+        color: isActive ? 'white' : 'var(--color-text)',
+        borderRadius: 10, transition: 'all 0.15s',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        minHeight: 44 }}
       onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--color-surfaceHover)'; }}
       onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
     >
@@ -34,7 +39,7 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
           </span>
         )}
         {onDelete && (
-          <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, opacity: 0.6, fontSize: 14 }}
+          <button onClick={onDelete} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, opacity: 0.6, fontSize: 14, minWidth: 32, minHeight: 32 }}
             onMouseEnter={e => e.target.style.opacity = 1} onMouseLeave={e => e.target.style.opacity = 0.6}>🗑️</button>
         )}
       </div>
@@ -42,12 +47,19 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
   );
 
   return (
-    <div style={{ width: 260, backgroundColor: 'var(--color-surface)', borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{
+      width: isMobile ? '100%' : 260,
+      backgroundColor: 'var(--color-surface)',
+      borderRight: isMobile ? 'none' : '1px solid var(--color-border)',
+      display: 'flex', flexDirection: 'column',
+      height: isMobile ? '100%' : '100vh',
+      paddingBottom: isMobile ? 'var(--bottom-nav-height)' : 0
+    }}>
       {/* Header */}
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>💬 ChatApp</h2>
-          <button onClick={onThemeToggle} className="btn-ghost" style={{ padding: 6, fontSize: 18 }} title="Toggle theme">{themeIcon}</button>
+          <button onClick={onThemeToggle} className="btn-ghost" style={{ padding: 6, fontSize: 18, minWidth: 40, minHeight: 40 }} title="Toggle theme">{themeIcon}</button>
         </div>
         <button onClick={() => setShowCreateRoom(!showCreateRoom)} className="btn btn-primary" style={{ width: '100%', fontSize: 13 }}>
           ➕ New Room
@@ -66,7 +78,7 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
         </div>
       )}
 
-      {/* Rooms */}
+      {/* Rooms list */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 8px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-textMuted)', textTransform: 'uppercase', letterSpacing: '0.6px', padding: '0 6px 8px' }}>Rooms</div>
         {roomItem('general', '🏠', currentRoom === 'general', () => onRoomSelect('general'), null)}
@@ -85,7 +97,7 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
       {/* User profile */}
       <div style={{ padding: '12px 14px', borderTop: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <img src={avatar(currentUser?.username)} alt={currentUser?.username} style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid var(--color-primary)' }} />
+          <img src={avatar(currentUser?.username)} alt={currentUser?.username} style={{ width: 38, height: 38, borderRadius: '50%', border: '2px solid var(--color-primary)', flexShrink: 0 }} />
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentUser?.username}</div>
             <div style={{ fontSize: 11, color: 'var(--color-online)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -95,7 +107,7 @@ const Sidebar = ({ rooms, currentRoom, onRoomSelect, currentUser, unreadCounts, 
           </div>
         </div>
         <button onClick={onLogout} className="btn btn-secondary" style={{ width: '100%', fontSize: 13, color: 'var(--color-error)' }}>
-          🚪 Logout
+          🚪 Leave
         </button>
       </div>
     </div>

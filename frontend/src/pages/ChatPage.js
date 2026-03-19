@@ -5,8 +5,17 @@ import Sidebar from '../components/Sidebar';
 import { useSocket } from '../context/SocketContext';
 import { roomAPI } from '../services/api';
 import privacyAuth from '../services/privacyAuth';
-import secureStorage from '../services/secureStorage';
 import { applyTheme, getStoredTheme } from '../styles/theme';
+
+const useIsMobile = () => {
+  const [mobile, setMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const fn = () => setMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return mobile;
+};
 
 const ChatPage = () => {
   const [rooms, setRooms] = useState([]);
@@ -17,83 +26,82 @@ const ChatPage = () => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(getStoredTheme());
+  // Mobile drawer state: 'chat' | 'rooms' | 'users'
+  const [mobileTab, setMobileTab] = useState('chat');
+  const isMobile = useIsMobile();
   const socket = useSocket();
 
   useEffect(() => { applyTheme(currentTheme); }, [currentTheme]);
 
   useEffect(() => {
     const user = privacyAuth.getCurrentUser();
-    if (!user) { window.location.href = '/login'; return; }
+    if (!user) { window.location.href = '/'; return; }
     setCurrentUser(user);
+    if (user.roomId) setCurrentRoom(user.roomId);
     roomAPI.getRooms().then(r => setRooms(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!socket || !currentUser) return;
+
+    const onMessage = (msg) => {
+      setMessages(prev => [...prev, msg]);
+      if (msg.room && msg.room !== currentRoom)
+        setUnreadCounts(prev => ({ ...prev, [msg.room]: (prev[msg.room] || 0) + 1 }));
+    };
+    const onOnlineUsers = (users) => setOnlineUsers(users);
+    const onTyping = (d) => { if (d.username !== currentUser.username) setTypingUsers(p => p.includes(d.username) ? p : [...p, d.username]); };
+    const onStopTyping = (d) => setTypingUsers(p => p.filter(u => u !== d.username));
+    const onDeleted = ({ messageId }) => setMessages(p => p.filter(m => (m.id || m._id) !== messageId));
+    const onReacted = ({ messageId, reactions }) => setMessages(p => p.map(m => (m.id || m._id) === messageId ? { ...m, reactions } : m));
+
+    socket.off('receive_message').on('receive_message', onMessage);
+    socket.off('online_users').on('online_users', onOnlineUsers);
+    socket.off('user_typing').on('user_typing', onTyping);
+    socket.off('user_stop_typing').on('user_stop_typing', onStopTyping);
+    socket.off('message_deleted').on('message_deleted', onDeleted);
+    socket.off('message_reacted').on('message_reacted', onReacted);
+
     socket.emit('join_room', { room: currentRoom, username: currentUser.username });
-    loadMessages(currentRoom);
+    roomAPI.getMessages(currentRoom).then(r => setMessages(r.data)).catch(() => {});
     setUnreadCounts(prev => ({ ...prev, [currentRoom]: 0 }));
 
-    socket.on('receive_message', (msg) => {
-      setMessages(prev => [...prev, msg]);
-      if (msg.user === currentUser.username) secureStorage.saveSentMessage(msg, currentRoom);
-      if (msg.room && msg.room !== currentRoom) {
-        setUnreadCounts(prev => ({ ...prev, [msg.room]: (prev[msg.room] || 0) + 1 }));
-      }
-    });
-    socket.on('online_users', setOnlineUsers);
-    socket.on('user_typing', (d) => { if (d.username !== currentUser.username) setTypingUsers(p => p.includes(d.username) ? p : [...p, d.username]); });
-    socket.on('user_stop_typing', (d) => setTypingUsers(p => p.filter(u => u !== d.username)));
-    socket.on('message_deleted', ({ messageId }) => setMessages(p => p.filter(m => (m.id || m._id || m.timestamp) !== messageId)));
-    socket.on('message_reacted', ({ messageId, reactions }) => setMessages(p => p.map(m => (m.id || m._id) === messageId ? { ...m, reactions } : m)));
-
     return () => {
-      ['receive_message','online_users','user_typing','user_stop_typing','message_deleted','message_reacted'].forEach(e => socket.off(e));
+      socket.off('receive_message', onMessage);
+      socket.off('online_users', onOnlineUsers);
+      socket.off('user_typing', onTyping);
+      socket.off('user_stop_typing', onStopTyping);
+      socket.off('message_deleted', onDeleted);
+      socket.off('message_reacted', onReacted);
     };
   }, [socket, currentRoom, currentUser]);
 
-  const loadMessages = async (roomId) => {
-    try {
-      const { data: serverMsgs } = await roomAPI.getMessages(roomId);
-      const localMsgs = secureStorage.getSentMessages(roomId);
-      const all = [...serverMsgs];
-      localMsgs.forEach(lm => {
-        const exists = serverMsgs.find(sm => sm.user === lm.user && sm.message === lm.message && Math.abs(new Date(sm.timestamp) - new Date(lm.timestamp)) < 5000);
-        if (!exists) all.push(lm);
-      });
-      all.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      setMessages(all);
-    } catch {
-      setMessages(secureStorage.getSentMessages(roomId));
-    }
-  };
-
   const sendMessage = (payload) => {
     if (!socket || !currentUser) return;
-    const msg = {
+    socket.emit('send_message', {
       user: currentUser.username,
       message: payload.message || '',
       room: currentRoom,
-      timestamp: new Date().toISOString(),
       type: payload.type || 'text',
       attachment: payload.attachment
-    };
-    secureStorage.saveSentMessage(msg, currentRoom);
-    socket.emit('send_message', msg);
+    });
   };
 
   const toggleTheme = () => {
     const list = ['light', 'dark', 'midnight'];
     const next = list[(list.indexOf(currentTheme) + 1) % list.length];
-    setCurrentTheme(next);
-    applyTheme(next);
+    setCurrentTheme(next); applyTheme(next);
   };
 
-  const handleLogout = () => {
-    privacyAuth.clearSession();
-    if (window.confirm('Clear locally stored messages?')) secureStorage.clearSentMessages();
-    window.location.href = '/login';
+  const handleLogout = () => { privacyAuth.clearSession(); window.location.href = '/'; };
+
+  const handleRoomSelect = (r) => {
+    setCurrentRoom(r);
+    setTypingUsers([]);
+    if (isMobile) setMobileTab('chat');
   };
+
+  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
 
   if (!currentUser) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--color-background)' }}>
@@ -101,10 +109,57 @@ const ChatPage = () => {
     </div>
   );
 
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--color-background)', overflow: 'hidden' }}>
+        {/* Mobile panels */}
+        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'rooms' ? 'flex' : 'none' }}>
+          <Sidebar rooms={rooms} currentRoom={currentRoom} onRoomSelect={handleRoomSelect}
+            currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme}
+            currentTheme={currentTheme} onLogout={handleLogout} isMobile />
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
+          <ChatWindow messages={messages} currentRoom={currentRoom} onSendMessage={sendMessage}
+            currentUser={currentUser} typingUsers={typingUsers} isMobile />
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'users' ? 'flex' : 'none' }}>
+          <OnlineUsers users={onlineUsers} isMobile />
+        </div>
+
+        {/* Bottom nav */}
+        <nav className="bottom-nav">
+          {[
+            { id: 'rooms', icon: '☰', label: 'Rooms', badge: totalUnread },
+            { id: 'chat',  icon: '💬', label: 'Chat',  badge: 0 },
+            { id: 'users', icon: '👥', label: 'Online', badge: onlineUsers.length },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setMobileTab(tab.id)}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: '6px 0', position: 'relative',
+                color: mobileTab === tab.id ? 'var(--color-primary)' : 'var(--color-textMuted)',
+                borderTop: mobileTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
+                background: 'transparent', transition: 'color 0.15s' }}>
+              <span style={{ fontSize: 20 }}>{tab.icon}</span>
+              <span style={{ fontSize: 10, fontWeight: 600 }}>{tab.label}</span>
+              {tab.badge > 0 && (
+                <span style={{ position: 'absolute', top: 4, right: '50%', transform: 'translateX(10px)', backgroundColor: 'var(--color-error)', color: 'white', borderRadius: 999, padding: '0 5px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'var(--font-family)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}>
-      <Sidebar rooms={rooms} currentRoom={currentRoom} onRoomSelect={(r) => { setCurrentRoom(r); setTypingUsers([]); }} currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme} currentTheme={currentTheme} onLogout={handleLogout} />
-      <ChatWindow messages={messages} currentRoom={currentRoom} onSendMessage={sendMessage} currentUser={currentUser} typingUsers={typingUsers} />
+      <Sidebar rooms={rooms} currentRoom={currentRoom} onRoomSelect={handleRoomSelect}
+        currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme}
+        currentTheme={currentTheme} onLogout={handleLogout} />
+      <ChatWindow messages={messages} currentRoom={currentRoom} onSendMessage={sendMessage}
+        currentUser={currentUser} typingUsers={typingUsers} />
       <OnlineUsers users={onlineUsers} />
     </div>
   );

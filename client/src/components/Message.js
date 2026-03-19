@@ -7,13 +7,13 @@ const Message = ({ message, currentUser }) => {
   const socket = useSocket();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const formatTime = (timestamp) => format(new Date(timestamp), 'h:mm a');
+  const formatTime = (ts) => { try { const d = new Date(ts); return isNaN(d) ? '' : format(d, 'h:mm a'); } catch { return ''; } };
 
   const getAvatarUrl = (username) => `https://api.dicebear.com/7.x/initials/svg?seed=${username}&backgroundColor=667eea`;
 
   const bubbleStyle = isOwnMessage
-    ? { background: 'var(--gradient-message)', color: 'white', borderRadius: '12px 12px 6px 12px', marginLeft: 'auto' }
-    : { backgroundColor: 'var(--color-surface)', color: 'var(--color-text)', borderRadius: '12px 12px 12px 6px', marginRight: 'auto', border: '1px solid var(--color-border)' };
+    ? { background: 'var(--gradient-message)', color: '#ffffff', borderRadius: '12px 12px 6px 12px', marginLeft: 'auto' }
+    : { backgroundColor: 'var(--color-surfaceHover)', color: 'var(--color-text)', borderRadius: '12px 12px 12px 6px', marginRight: 'auto', border: '1.5px solid var(--color-border)' };
 
   const handleDelete = () => {
     const messageId = message.id || message._id || message.timestamp;
@@ -46,7 +46,7 @@ const Message = ({ message, currentUser }) => {
             <button aria-label="menu" onClick={() => setMenuOpen(v => !v)} style={{ position: 'absolute', top: 6, right: 6, background: 'transparent', border: 'none', cursor: 'pointer' }}>⋯</button>
           )}
 
-          <div style={{ fontSize: 14, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 15, lineHeight: 1.55, fontWeight: 450, letterSpacing: '0.01em' }}>
             {message.type === 'gif' && message.attachment ? (
               <img src={message.attachment} alt="gif" style={{ maxWidth: 360, borderRadius: 8 }} />
             ) : (
@@ -54,7 +54,7 @@ const Message = ({ message, currentUser }) => {
             )}
           </div>
 
-          <div style={{ fontSize: 12, color: 'var(--color-textMuted)', marginTop: 8 }}>
+          <div style={{ fontSize: 11, color: isOwnMessage ? 'rgba(255,255,255,0.8)' : 'var(--color-textSecondary)', marginTop: 8 }}>
             {formatTime(message.timestamp)} {isOwnMessage && <span style={{ opacity: 0.7 }}>• Encrypted</span>}
           </div>
 

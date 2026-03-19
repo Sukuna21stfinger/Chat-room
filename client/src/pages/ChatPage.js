@@ -5,7 +5,6 @@ import Sidebar from '../components/Sidebar';
 import { useSocket } from '../context/SocketContext';
 import { roomAPI } from '../services/api';
 import privacyAuth from '../services/privacyAuth';
-import secureStorage from '../services/secureStorage';
 import { applyTheme, getStoredTheme } from '../styles/theme';
 
 const ChatPage = () => {
@@ -19,244 +18,80 @@ const ChatPage = () => {
   const [currentTheme, setCurrentTheme] = useState(getStoredTheme());
   const socket = useSocket();
 
-  // Apply theme when `currentTheme` changes (separate effect)
-  useEffect(() => {
-    applyTheme(currentTheme);
-  }, [currentTheme]);
+  useEffect(() => { applyTheme(currentTheme); }, [currentTheme]);
 
-  // Initialize user and rooms once on mount. Do not re-set user on theme changes
-  // to avoid triggering socket re-join events.
   useEffect(() => {
     const user = privacyAuth.getCurrentUser();
-    if (!user) {
-      window.location.href = '/login';
-      return;
-    }
+    if (!user) { window.location.href = '/'; return; }
     setCurrentUser(user);
-    loadRooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (user.roomId) setCurrentRoom(user.roomId);
+    roomAPI.getRooms().then(r => setRooms(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (socket && currentUser) {
-      socket.emit('join_room', { room: currentRoom, username: currentUser.username });
-      loadMessages(currentRoom);
-      
-      // Clear unread count for current room
-      setUnreadCounts(prev => ({ ...prev, [currentRoom]: 0 }));
+    if (!socket || !currentUser) return;
 
-      socket.on('receive_message', (message) => {
-        setMessages(prev => [...prev, message]);
-        
-        // Save sent messages locally (encrypted)
-        if (message.user === currentUser.username) {
-          secureStorage.saveSentMessage(message, currentRoom);
-        }
-        
-        // Increment unread count if message is not from current room
-        if (message.room !== currentRoom) {
-          setUnreadCounts(prev => ({
-            ...prev,
-            [message.room]: (prev[message.room] || 0) + 1
-          }));
-        }
-      });
+    const onMessage = (msg) => {
+      setMessages(prev => [...prev, msg]);
+      if (msg.room && msg.room !== currentRoom)
+        setUnreadCounts(prev => ({ ...prev, [msg.room]: (prev[msg.room] || 0) + 1 }));
+    };
+    const onOnlineUsers = (users) => setOnlineUsers(users);
+    const onTyping = (d) => { if (d.username !== currentUser.username) setTypingUsers(p => p.includes(d.username) ? p : [...p, d.username]); };
+    const onStopTyping = (d) => setTypingUsers(p => p.filter(u => u !== d.username));
+    const onDeleted = ({ messageId }) => setMessages(p => p.filter(m => (m.id || m._id) !== messageId));
+    const onReacted = ({ messageId, reactions }) => setMessages(p => p.map(m => (m.id || m._id) === messageId ? { ...m, reactions } : m));
 
-      socket.on('online_users', (users) => {
-        setOnlineUsers(users);
-      });
+    socket.off('receive_message').on('receive_message', onMessage);
+    socket.off('online_users').on('online_users', onOnlineUsers);
+    socket.off('user_typing').on('user_typing', onTyping);
+    socket.off('user_stop_typing').on('user_stop_typing', onStopTyping);
+    socket.off('message_deleted').on('message_deleted', onDeleted);
+    socket.off('message_reacted').on('message_reacted', onReacted);
 
-      socket.on('user_typing', (data) => {
-        if (data.username !== currentUser.username) {
-          setTypingUsers(prev => {
-            if (!prev.includes(data.username)) {
-              return [...prev, data.username];
-            }
-            return prev;
-          });
-        }
-      });
+    socket.emit('join_room', { room: currentRoom, username: currentUser.username });
+    roomAPI.getMessages(currentRoom).then(r => setMessages(r.data)).catch(() => {});
+    setUnreadCounts(prev => ({ ...prev, [currentRoom]: 0 }));
 
-      socket.on('user_stop_typing', (data) => {
-        setTypingUsers(prev => prev.filter(user => user !== data.username));
-      });
-
-      socket.on('user_joined', (message) => {
-        console.log(message);
-      });
-
-      socket.on('user_left', (message) => {
-        console.log(message);
-      });
-
-      socket.on('message_deleted', (data) => {
-        const { messageId } = data;
-        setMessages(prev => prev.filter(m => (m.id || m._id || m.timestamp) !== messageId));
-      });
-
-      socket.on('message_reacted', (data) => {
-        const { messageId, reactions } = data;
-        setMessages(prev => prev.map(m => {
-          if ((m.id || m._id) === messageId) {
-            return { ...m, reactions };
-          }
-          return m;
-        }));
-      });
-
-      return () => {
-        socket.off('receive_message');
-        socket.off('online_users');
-        socket.off('user_typing');
-        socket.off('user_stop_typing');
-        socket.off('user_joined');
-        socket.off('user_left');
-        socket.off('message_deleted');
-        socket.off('message_reacted');
-      };
-    }
+    return () => {
+      socket.off('receive_message', onMessage);
+      socket.off('online_users', onOnlineUsers);
+      socket.off('user_typing', onTyping);
+      socket.off('user_stop_typing', onStopTyping);
+      socket.off('message_deleted', onDeleted);
+      socket.off('message_reacted', onReacted);
+    };
   }, [socket, currentRoom, currentUser]);
-
-  const loadRooms = async () => {
-    try {
-      const response = await roomAPI.getRooms();
-      setRooms(response.data);
-    } catch (error) {
-      console.error('Failed to load rooms');
-    }
-  };
-
-  const loadMessages = async (roomId) => {
-    try {
-      const response = await roomAPI.getMessages(roomId);
-      const serverMessages = response.data;
-      
-      // Merge with locally stored sent messages
-      const localSentMessages = secureStorage.getSentMessages(roomId);
-      
-      // Combine and sort messages
-      const allMessages = [...serverMessages];
-      
-      // Add local messages that might not be on server yet
-      localSentMessages.forEach(localMsg => {
-        const exists = serverMessages.find(serverMsg => 
-          serverMsg.user === localMsg.user && 
-          serverMsg.message === localMsg.message &&
-          Math.abs(new Date(serverMsg.timestamp) - new Date(localMsg.timestamp)) < 5000
-        );
-        if (!exists) {
-          allMessages.push(localMsg);
-        }
-      });
-      
-      // Sort by timestamp
-      allMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      
-      setMessages(allMessages);
-    } catch (error) {
-      console.error('Failed to load messages');
-      // Fallback to local messages only
-      const localMessages = secureStorage.getSentMessages(roomId);
-      setMessages(localMessages);
-    }
-  };
 
   const sendMessage = (payload) => {
     if (!socket || !currentUser) return;
-
-    if (typeof payload === 'object') {
-      const { type = 'text', message: text = '', attachment } = payload;
-      const messageData = {
-        user: currentUser.username,
-        message: text,
-        room: currentRoom,
-        timestamp: new Date().toISOString(),
-        type,
-        attachment
-      };
-      secureStorage.saveSentMessage(messageData, currentRoom);
-      socket.emit('send_message', messageData);
-      return;
-    }
-
-    if (typeof payload === 'string' && payload.trim()) {
-      const messageData = {
-        user: currentUser.username,
-        message: payload,
-        room: currentRoom,
-        timestamp: new Date().toISOString(),
-        type: 'text'
-      };
-      secureStorage.saveSentMessage(messageData, currentRoom);
-      socket.emit('send_message', messageData);
-    }
-  };
-
-  const switchRoom = (roomId) => {
-    setCurrentRoom(roomId);
-    setTypingUsers([]);
+    socket.emit('send_message', {
+      user: currentUser.username,
+      message: payload.message || '',
+      room: currentRoom,
+      type: payload.type || 'text',
+      attachment: payload.attachment
+    });
   };
 
   const toggleTheme = () => {
-    const themes = ['light', 'dark', 'midnight'];
-    const currentIndex = themes.indexOf(currentTheme);
-    const nextTheme = themes[(currentIndex + 1) % themes.length];
-    setCurrentTheme(nextTheme);
-    applyTheme(nextTheme);
+    const list = ['light', 'dark', 'midnight'];
+    const next = list[(list.indexOf(currentTheme) + 1) % list.length];
+    setCurrentTheme(next); applyTheme(next);
   };
 
-  const handleLogout = () => {
-    // Clear secure session
-    privacyAuth.clearSession();
-    
-    // Optionally clear local messages (ask user)
-    const clearLocal = window.confirm('Do you want to clear your locally stored messages?');
-    if (clearLocal) {
-      secureStorage.clearSentMessages();
-    }
-    
-    window.location.href = '/login';
-  };
+  const handleLogout = () => { privacyAuth.clearSession(); window.location.href = '/'; };
 
-  if (!currentUser) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'var(--color-background)'
-      }}>
-        <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
-      </div>
-    );
-  }
+  if (!currentUser) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--color-background)' }}>
+      <div className="spinner" style={{ width: 40, height: 40 }} />
+    </div>
+  );
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      height: '100vh',
-      fontFamily: 'var(--font-family)',
-      backgroundColor: 'var(--color-background)',
-      color: 'var(--color-text)'
-    }}>
-      <Sidebar 
-        rooms={rooms} 
-        currentRoom={currentRoom} 
-        onRoomSelect={switchRoom}
-        currentUser={currentUser}
-        unreadCounts={unreadCounts}
-        onThemeToggle={toggleTheme}
-        currentTheme={currentTheme}
-        onLogout={handleLogout}
-      />
-      <ChatWindow 
-        messages={messages}
-        currentRoom={currentRoom}
-        onSendMessage={sendMessage}
-        currentUser={currentUser}
-        typingUsers={typingUsers}
-      />
+    <div style={{ display: 'flex', height: '100vh', fontFamily: 'var(--font-family)', backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}>
+      <Sidebar rooms={rooms} currentRoom={currentRoom} onRoomSelect={(r) => { setCurrentRoom(r); setTypingUsers([]); }} currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme} currentTheme={currentTheme} onLogout={handleLogout} />
+      <ChatWindow messages={messages} currentRoom={currentRoom} onSendMessage={sendMessage} currentUser={currentUser} typingUsers={typingUsers} />
       <OnlineUsers users={onlineUsers} />
     </div>
   );

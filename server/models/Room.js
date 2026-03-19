@@ -1,21 +1,10 @@
 const mongoose = require('mongoose');
 
 const roomSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  description: {
-    type: String,
-    default: ''
-  },
-  createdBy: {
-    type: String,
-    required: true
-  }
-}, {
-  timestamps: true
-});
+  name:        { type: String, required: true, unique: true },
+  description: { type: String, default: '' },
+  passcode:    { type: String, default: '' },
+  createdBy:   { type: String, default: 'system' }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Room', roomSchema);

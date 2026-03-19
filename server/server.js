@@ -23,12 +23,7 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => res.json({ message: 'Chat App Server is running!', status: 'OK' }));
 
-// Mount routes unconditionally — DB connection is handled lazily below
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/rooms', require('./routes/rooms'));
-require('./socket/socketHandler')(io);
-
-// Lazy MongoDB connection — reuses existing connection on Vercel serverless
+// Lazy MongoDB connection
 let dbConnected = false;
 const connectDB = async () => {
   if (dbConnected || mongoose.connection.readyState === 1) return;
@@ -39,7 +34,7 @@ const connectDB = async () => {
   console.log('Connected to MongoDB');
 };
 
-// Middleware to ensure DB is connected before any /api route
+// Ensure DB is connected before any /api route
 app.use('/api', async (req, res, next) => {
   try {
     await connectDB();
@@ -49,6 +44,11 @@ app.use('/api', async (req, res, next) => {
     res.status(503).json({ message: 'Database unavailable. Please try again.' });
   }
 });
+
+// Mount routes AFTER the DB middleware
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/rooms', require('./routes/rooms'));
+require('./socket/socketHandler')(io);
 
 const startServer = async () => {
   try {

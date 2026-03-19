@@ -1,33 +1,37 @@
 const Message = require('../models/Message');
-const User = require('../models/User');
 
-const connectedUsers = new Map();
+const connectedUsers = new Map(); // socketId → { username, room }
+const MSG_LIMIT = 150;
 
 module.exports = (io) => {
   io.on('connection', (socket) => {
-    console.log('Socket connected:', socket.id);
-
     socket.on('join_room', async ({ room, username }) => {
       socket.join(room);
       connectedUsers.set(socket.id, { username, room });
 
-      await User.findOneAndUpdate({ username }, { isOnline: true });
-
-      const roomUsernames = [...connectedUsers.values()]
+      const roomUsers = [...connectedUsers.values()]
         .filter(u => u.room === room).map(u => u.username);
-      const usersData = await User.find({ username: { $in: roomUsernames } }, 'username isOnline');
-      io.to(room).emit('online_users', usersData);
+      io.to(room).emit('online_users', roomUsers);
 
-      socket.to(room).emit('user_joined', `${username} joined`);
-      const sys = await new Message({ room, type: 'system', message: `${username} joined the room` }).save();
-      io.to(room).emit('receive_message', { type: 'system', message: sys.message, timestamp: sys.timestamp, id: sys._id });
+      const sys = await new Message({ room, type: 'system', message: `${username} joined` }).save();
+      io.to(room).emit('receive_message', { type: 'system', message: sys.message, timestamp: sys.createdAt, id: sys._id });
     });
 
     socket.on('send_message', async ({ user, message, room, type = 'text', attachment }) => {
+      if (!message || message.length > 500) return;
+
       const saved = await new Message({ user, message, room, type, attachment }).save();
+
+      // Enforce 150-message cap — delete oldest if over limit
+      const count = await Message.countDocuments({ room });
+      if (count > MSG_LIMIT) {
+        const oldest = await Message.find({ room }).sort({ createdAt: 1 }).limit(count - MSG_LIMIT);
+        await Message.deleteMany({ _id: { $in: oldest.map(m => m._id) } });
+      }
+
       io.to(room).emit('receive_message', {
         user, message, room, type, attachment,
-        timestamp: saved.timestamp,
+        timestamp: saved.createdAt,
         id: saved._id
       });
     });
@@ -41,9 +45,7 @@ module.exports = (io) => {
       const msg = await Message.findById(messageId);
       if (!msg) return;
       const users = msg.reactions.get(emoji) || [];
-      msg.reactions.set(emoji, users.includes(user)
-        ? users.filter(u => u !== user)
-        : [...users, user]);
+      msg.reactions.set(emoji, users.includes(user) ? users.filter(u => u !== user) : [...users, user]);
       await msg.save();
       io.to(msg.room).emit('message_reacted', { messageId, reactions: Object.fromEntries(msg.reactions) });
     });
@@ -54,20 +56,14 @@ module.exports = (io) => {
     socket.on('disconnect', async () => {
       const user = connectedUsers.get(socket.id);
       if (!user) return;
-
-      await User.findOneAndUpdate({ username: user.username }, { isOnline: false, lastSeen: new Date() });
       connectedUsers.delete(socket.id);
 
-      const roomUsernames = [...connectedUsers.values()]
+      const roomUsers = [...connectedUsers.values()]
         .filter(u => u.room === user.room).map(u => u.username);
-      const usersData = await User.find({ username: { $in: roomUsernames } }, 'username isOnline');
-      io.to(user.room).emit('online_users', usersData);
+      io.to(user.room).emit('online_users', roomUsers);
 
-      socket.to(user.room).emit('user_left', `${user.username} left`);
-      const sys = await new Message({ room: user.room, type: 'system', message: `${user.username} left the room` }).save();
-      io.to(user.room).emit('receive_message', { type: 'system', message: sys.message, timestamp: sys.timestamp, id: sys._id });
-
-      console.log('Socket disconnected:', socket.id);
+      const sys = await new Message({ room: user.room, type: 'system', message: `${user.username} left` }).save();
+      io.to(user.room).emit('receive_message', { type: 'system', message: sys.message, timestamp: sys.createdAt, id: sys._id });
     });
   });
 };

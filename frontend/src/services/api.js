@@ -11,16 +11,14 @@ api.interceptors.request.use((config) => {
 });
 
 export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login:    (data) => api.post('/auth/login', data),
-  guest:    ()     => api.post('/auth/guest')
+  join: (data) => api.post('/auth/join', data)   // { username, roomId, passcode? }
 };
 
 export const roomAPI = {
-  getRooms:   ()         => api.get('/rooms'),
-  createRoom: (data)     => api.post('/rooms', data),
-  getMessages:(roomId)   => api.get(`/rooms/${roomId}/messages`),
-  deleteRoom: (roomId)   => api.delete(`/rooms/${roomId}`)
+  getRooms:    ()       => api.get('/rooms'),
+  createRoom:  (data)   => api.post('/rooms', data),
+  getMessages: (roomId) => api.get(`/rooms/${roomId}/messages`),
+  deleteRoom:  (roomId) => api.delete(`/rooms/${roomId}`)
 };
 
 export default api;

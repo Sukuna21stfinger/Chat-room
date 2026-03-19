@@ -3,75 +3,52 @@ const Room = require('../models/Room');
 const Message = require('../models/Message');
 
 const router = express.Router();
+const MSG_LIMIT = 150;
 
 // Get all rooms
 router.get('/', async (req, res) => {
   try {
-    const rooms = await Room.find();
-    res.json(rooms);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+    res.json(await Room.find({}, 'name description'));
+  } catch { res.status(500).json({ message: 'Server error' }); }
 });
 
 // Create room
 router.post('/', async (req, res) => {
   try {
-    const { name, description, createdBy } = req.body;
-    const room = new Room({ name, description, createdBy });
-    await room.save();
-    res.json(room);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+    const { name, description, passcode, createdBy } = req.body;
+    const room = await new Room({ name, description, passcode, createdBy }).save();
+    res.json({ name: room.name, description: room.description });
+  } catch { res.status(500).json({ message: 'Server error' }); }
 });
 
-// Delete room (and its messages)
+// Delete room + its messages
 router.delete('/:roomId', async (req, res) => {
   try {
-    // Allow deleting by MongoDB _id or by room name (fallback)
     let room = null;
-    // Try by ObjectId
-    try {
-      room = await Room.findByIdAndDelete(req.params.roomId);
-    } catch (err) {
-      room = null;
-    }
-
-    // If not found by id, try deleting by name
-    if (!room) {
-      room = await Room.findOneAndDelete({ name: req.params.roomId });
-    }
-
+    try { room = await Room.findByIdAndDelete(req.params.roomId); } catch (_) {}
+    if (!room) room = await Room.findOneAndDelete({ name: req.params.roomId });
     if (!room) return res.status(404).json({ message: 'Room not found' });
-
-    // Remove messages that reference the room name
     await Message.deleteMany({ room: room.name });
     res.json({ message: 'Room deleted' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+  } catch { res.status(500).json({ message: 'Server error' }); }
 });
 
-// Get messages for a room
+// Get last 150 messages for a room
 router.get('/:roomId/messages', async (req, res) => {
   try {
-    const messages = await Message.find({ room: req.params.roomId }).sort({ timestamp: 1 });
-    res.json(messages);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+    const messages = await Message.find({ room: req.params.roomId })
+      .sort({ createdAt: -1 }).limit(MSG_LIMIT).lean();
+    res.json(messages.reverse());
+  } catch { res.status(500).json({ message: 'Server error' }); }
 });
 
-// delete a message
+// Delete a single message
 router.delete('/messages/:messageId', async (req, res) => {
   try {
     const msg = await Message.findByIdAndDelete(req.params.messageId);
     if (!msg) return res.status(404).json({ message: 'Message not found' });
-    res.json({ message: 'Message deleted', id: req.params.messageId, room: msg.room });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
+    res.json({ message: 'Deleted', id: req.params.messageId, room: msg.room });
+  } catch { res.status(500).json({ message: 'Server error' }); }
 });
 
 module.exports = router;

@@ -9,7 +9,11 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
-    const s = io(serverUrl, { transports: ['websocket', 'polling'] });
+    const token = localStorage.getItem('token');
+    const s = io(serverUrl, {
+      transports: ['websocket', 'polling'],
+      auth: { token }
+    });
     setSocket(s);
     return () => s.close();
   }, []);
