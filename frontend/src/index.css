@@ -163,26 +163,11 @@ img { max-width: 100%; height: auto; display: block; }
 }
 .drawer-overlay.open { display: block; }
 
-/* Bottom nav — mobile only */
-.bottom-nav {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--bottom-nav-height);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-  z-index: 100;
-  align-items: center;
-  justify-content: space-around;
-}
+/* Bottom nav — removed, replaced with hamburger drawer */
+.bottom-nav { display: none; }
 
 @media (max-width: 768px) {
   :root { --font-size-base: 0.9375rem; }
-
-  .bottom-nav { display: flex; }
-
   /* Prevent inputs from zooming on iOS — ensure 16px minimum */
   input, textarea, select { font-size: max(16px, 1rem) !important; }
 }

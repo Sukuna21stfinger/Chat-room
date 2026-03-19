@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ChatWindow from '../components/ChatWindow';
 import OnlineUsers from '../components/OnlineUsers';
 import Sidebar from '../components/Sidebar';
@@ -17,6 +17,25 @@ const useIsMobile = () => {
   return mobile;
 };
 
+// Slide-in drawer for mobile
+const Drawer = ({ open, onClose, children }) => (
+  <>
+    {open && (
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, backdropFilter: 'blur(2px)' }} />
+    )}
+    <div style={{
+      position: 'fixed', top: 0, right: 0, bottom: 0, width: '80vw', maxWidth: 320,
+      background: 'var(--color-surface)', zIndex: 201, boxShadow: '-4px 0 24px rgba(0,0,0,0.2)',
+      transform: open ? 'translateX(0)' : 'translateX(100%)',
+      transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+      display: 'flex', flexDirection: 'column', overflowY: 'auto'
+    }}>
+      <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, background: 'transparent', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--color-textMuted)', zIndex: 1 }}>✕</button>
+      {children}
+    </div>
+  </>
+);
+
 const ChatPage = () => {
   const [rooms, setRooms] = useState([]);
   const [currentRoom, setCurrentRoom] = useState('general');
@@ -26,8 +45,8 @@ const ChatPage = () => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const [currentTheme, setCurrentTheme] = useState(getStoredTheme());
-  // Mobile drawer state: 'chat' | 'rooms' | 'users'
-  const [mobileTab, setMobileTab] = useState('chat');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState('rooms'); // 'rooms' | 'users'
   const isMobile = useIsMobile();
   const socket = useSocket();
 
@@ -98,7 +117,7 @@ const ChatPage = () => {
   const handleRoomSelect = (r) => {
     setCurrentRoom(r);
     setTypingUsers([]);
-    if (isMobile) setMobileTab('chat');
+    setDrawerOpen(false);
   };
 
   const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
@@ -112,42 +131,62 @@ const ChatPage = () => {
   if (isMobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: 'var(--color-background)', overflow: 'hidden' }}>
-        {/* Mobile panels */}
-        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'rooms' ? 'flex' : 'none' }}>
-          <Sidebar rooms={rooms} currentRoom={currentRoom} onRoomSelect={handleRoomSelect}
-            currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme}
-            currentTheme={currentTheme} onLogout={handleLogout} isMobile />
-        </div>
-        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'chat' ? 'flex' : 'none', flexDirection: 'column', paddingBottom: 'var(--bottom-nav-height)' }}>
-          <ChatWindow messages={messages} currentRoom={currentRoom} onSendMessage={sendMessage}
-            currentUser={currentUser} typingUsers={typingUsers} isMobile />
-        </div>
-        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'users' ? 'flex' : 'none' }}>
-          <OnlineUsers users={onlineUsers} isMobile />
+
+        {/* Mobile top header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', flexShrink: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, background: 'var(--gradient-primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+              {currentRoom === 'general' ? '🏠' : '💬'}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>#{currentRoom}</div>
+              <div style={{ fontSize: 11, color: 'var(--color-textMuted)' }}>{onlineUsers.length} online</div>
+            </div>
+          </div>
+
+          {/* Hamburger */}
+          <button onClick={() => setDrawerOpen(v => !v)} style={{ position: 'relative', background: 'transparent', border: '1px solid var(--color-border)', borderRadius: 8, width: 38, height: 38, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, cursor: 'pointer' }}>
+            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--color-text)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--color-text)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 18, height: 2, background: 'var(--color-text)', borderRadius: 2 }} />
+            {totalUnread > 0 && (
+              <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, background: 'var(--color-error)', borderRadius: '50%' }} />
+            )}
+          </button>
         </div>
 
-        {/* Bottom nav */}
-        <nav className="bottom-nav">
-          {[
-            { id: 'rooms', icon: '☰', label: 'Rooms', badge: totalUnread },
-            { id: 'chat',  icon: '💬', label: 'Chat',  badge: 0 },
-            { id: 'users', icon: '👥', label: 'Online', badge: onlineUsers.length },
-          ].map(tab => (
-            <button key={tab.id} onClick={() => setMobileTab(tab.id)}
-              style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, padding: '6px 0', position: 'relative',
-                color: mobileTab === tab.id ? 'var(--color-primary)' : 'var(--color-textMuted)',
-                borderTop: mobileTab === tab.id ? '2px solid var(--color-primary)' : '2px solid transparent',
-                background: 'transparent', transition: 'color 0.15s' }}>
-              <span style={{ fontSize: 20 }}>{tab.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 600 }}>{tab.label}</span>
-              {tab.badge > 0 && (
-                <span style={{ position: 'absolute', top: 4, right: '50%', transform: 'translateX(10px)', backgroundColor: 'var(--color-error)', color: 'white', borderRadius: 999, padding: '0 5px', fontSize: 10, fontWeight: 700, minWidth: 16, textAlign: 'center' }}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
+        {/* Chat fills remaining space, scrollable */}
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <ChatWindow
+            messages={messages}
+            currentRoom={currentRoom}
+            onSendMessage={sendMessage}
+            currentUser={currentUser}
+            typingUsers={typingUsers}
+            isMobile
+          />
+        </div>
+
+        {/* Slide-in drawer */}
+        <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+          {/* Drawer tabs */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginTop: 0 }}>
+            {['rooms', 'users'].map(tab => (
+              <button key={tab} onClick={() => setDrawerTab(tab)} style={{ flex: 1, padding: '14px 0', fontSize: 13, fontWeight: 600, background: 'transparent', border: 'none', borderBottom: drawerTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent', color: drawerTab === tab ? 'var(--color-primary)' : 'var(--color-textMuted)', cursor: 'pointer', textTransform: 'capitalize' }}>
+                {tab === 'rooms' ? `Rooms${totalUnread > 0 ? ` (${totalUnread})` : ''}` : `Online (${onlineUsers.length})`}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            {drawerTab === 'rooms' && (
+              <Sidebar rooms={rooms} currentRoom={currentRoom} onRoomSelect={handleRoomSelect}
+                currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme}
+                currentTheme={currentTheme} onLogout={handleLogout} isMobile />
+            )}
+            {drawerTab === 'users' && <OnlineUsers users={onlineUsers} isMobile />}
+          </div>
+        </Drawer>
       </div>
     );
   }

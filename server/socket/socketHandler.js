@@ -18,7 +18,8 @@ module.exports = (io) => {
     });
 
     socket.on('send_message', async ({ user, message, room, type = 'text', attachment }) => {
-      if (!message || message.length > 500) return;
+      if (type !== 'gif' && (!message || message.length > 500)) return;
+      if (type === 'gif' && !attachment) return;
 
       const saved = await new Message({ user, message, room, type, attachment }).save();
 
