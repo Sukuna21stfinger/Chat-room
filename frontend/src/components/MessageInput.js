@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Picker from '@emoji-mart/react';
 import data from '@emoji-mart/data';
 import { useSocket } from '../context/SocketContext';
@@ -111,7 +111,7 @@ const GifPicker = ({ onSelect }) => {
           <div style={{ gridColumn: '1/-1', color: 'var(--color-textMuted)', fontSize: 12, padding: 8 }}>No GIFs found</div>
         )}
         {results.map(g => (
-          <img key={g.id} src={g.url} alt="gif" onClick={() => onSelect(g.url)}
+          <img key={g.id} src={g.url} alt="gif" loading="lazy" onClick={() => onSelect(g.url)}
             style={{ width: '100%', height: 80, objectFit: 'cover', cursor: 'pointer', borderRadius: 6, transition: 'opacity 0.15s' }}
             onMouseEnter={e => e.target.style.opacity = 0.75}
             onMouseLeave={e => e.target.style.opacity = 1}
@@ -145,7 +145,7 @@ const MessageInput = ({ onSendMessage, currentRoom }) => {
     return () => clearTimeout(t);
   }, [isTyping, currentRoom, socket, currentUser.username]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     setMessage(e.target.value);
     if (!isTyping && e.target.value.trim()) {
       setIsTyping(true);
@@ -153,14 +153,12 @@ const MessageInput = ({ onSendMessage, currentRoom }) => {
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      if (isTyping) {
-        setIsTyping(false);
-        socket.emit('stop_typing', { room: currentRoom, username: currentUser.username });
-      }
+      setIsTyping(false);
+      socket.emit('stop_typing', { room: currentRoom, username: currentUser.username });
     }, 1200);
-  };
+  }, [isTyping, currentRoom, socket, currentUser.username]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = useCallback((e) => {
     e && e.preventDefault();
     if (!message.trim()) return;
     onSendMessage && onSendMessage({ message: message.trim(), user: currentUser.username || 'guest', room: currentRoom, timestamp: Date.now(), type: 'text' });
@@ -172,22 +170,22 @@ const MessageInput = ({ onSendMessage, currentRoom }) => {
       setIsTyping(false);
       socket.emit('stop_typing', { room: currentRoom, username: currentUser.username });
     }
-  };
+  }, [message, isTyping, onSendMessage, currentRoom, socket, currentUser.username]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
-  };
+  }, [handleSubmit]);
 
-  const handleGifSelect = (url) => {
+  const handleGifSelect = useCallback((url) => {
     onSendMessage && onSendMessage({ type: 'gif', attachment: url, user: currentUser.username || 'guest', room: currentRoom, timestamp: Date.now() });
     setShowGifs(false);
-  };
+  }, [onSendMessage, currentRoom, currentUser.username]);
 
-  const handleEmojiSelect = (emoji) => {
+  const handleEmojiSelect = useCallback((emoji) => {
     setMessage(prev => prev + emoji.native);
     setShowEmoji(false);
     setTimeout(() => inputRef.current && inputRef.current.focus(), 0);
-  };
+  }, []);
 
   return (
     <div style={{ padding: '10px 14px', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>

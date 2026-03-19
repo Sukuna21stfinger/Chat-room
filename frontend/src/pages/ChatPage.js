@@ -80,10 +80,10 @@ const ChatPage = () => {
     if (!socket || !currentUser) return;
     socket.emit('send_message', {
       user: currentUser.username,
-      message: payload.message || '',
+      message: payload.type === 'gif' ? '' : (payload.message || ''),
       room: currentRoom,
       type: payload.type || 'text',
-      attachment: payload.attachment
+      attachment: payload.type === 'gif' ? payload.attachment : undefined
     });
   };
 
@@ -118,7 +118,7 @@ const ChatPage = () => {
             currentUser={currentUser} unreadCounts={unreadCounts} onThemeToggle={toggleTheme}
             currentTheme={currentTheme} onLogout={handleLogout} isMobile />
         </div>
-        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'chat' ? 'flex' : 'none', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'hidden', display: mobileTab === 'chat' ? 'flex' : 'none', flexDirection: 'column', paddingBottom: 'var(--bottom-nav-height)' }}>
           <ChatWindow messages={messages} currentRoom={currentRoom} onSendMessage={sendMessage}
             currentUser={currentUser} typingUsers={typingUsers} isMobile />
         </div>
