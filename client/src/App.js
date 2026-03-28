@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { SocketProvider } from './context/SocketContext';
 import ChatPage from './pages/ChatPage';
-import Join from './pages/Login';
+import Login from './pages/Login';
 import privacyAuth from './services/privacyAuth';
 import { applyTheme, getStoredTheme } from './styles/theme';
 
@@ -10,7 +10,9 @@ const PrivateRoute = ({ children }) =>
   privacyAuth.isAuthenticated() ? children : <Navigate to="/login" />;
 
 function App() {
-  useEffect(() => { applyTheme(getStoredTheme()); }, []);
+  useEffect(() => {
+    applyTheme(getStoredTheme());
+  }, []);
 
   return (
     <Router>
@@ -18,7 +20,7 @@ function App() {
         <div className="App">
           <Routes>
             <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/login" element={<Join />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
