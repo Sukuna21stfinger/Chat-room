@@ -9,7 +9,7 @@ import { applyTheme, getStoredTheme } from '../styles/theme';
 
 const ChatPage = () => {
   const [rooms, setRooms] = useState([]);
-  const [currentRoom, setCurrentRoom] = useState('THE RED ROOM');
+  const [currentRoom, setCurrentRoom] = useState('general');
   const [messages, setMessages] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
@@ -25,17 +25,7 @@ const ChatPage = () => {
     if (!user) { window.location.href = '/'; return; }
     setCurrentUser(user);
     if (user.roomId) setCurrentRoom(user.roomId);
-    
-    // Fetch all rooms
-    roomAPI.getRooms()
-      .then(r => {
-        const roomsList = Array.isArray(r.data) ? r.data : [];
-        setRooms(roomsList);
-      })
-      .catch(err => {
-        console.error('Failed to fetch rooms:', err);
-        setRooms([]);
-      });
+    roomAPI.getRooms().then(r => setRooms(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
